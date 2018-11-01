@@ -1,0 +1,21 @@
+---
+title: "hw06-lh563"
+author: "Lu Han"
+date: "11/1/2018"
+output: github_document
+---
+
+# Homework 06
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(gapminder))
+
+```
+
+## Task 02
+### Working with functions
+
+```{r}
+
+```
