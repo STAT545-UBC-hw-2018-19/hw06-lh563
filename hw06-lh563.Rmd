@@ -10,12 +10,140 @@ output: github_document
 ```{r}
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(gapminder))
+suppressPackageStartupMessages(library(broom))
+suppressPackageStartupMessages(library(MASS))
 
 ```
 
 ## Task 02
 ### Working with functions
+First, let's filter the data of China
+```{r}
+
+(gap<- gapminder %>% 
+  filter(country == "China"))
+```
+
+Plot the data.
+```{r}
+p <- ggplot(gap, aes(x = year, y = gdpPercap))
+p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+```
+Fit the linear regression model
+
+```{r}
+gap_lm <- lm(gdpPercap~year,data=gap)
+coef(gap_lm)
+```
+
+From the previous graph, we can tell the linear regression is not a good model for the data as most of the dots do not fall on the line. From the coefficient, we can tell that when year=0, gdpPercap=intercept=-127509.31555 , which does not make sense. Hence, a quadratic regression model is applied to fit the data.
+```{r}
+gap_qm<- lm(gdpPercap~I(year)+I(year^2),data=gap)
+coef(gap_qm)
+```
+
+The intercept is too large when the year=0. Hence, according to Jenny's tutorial, an offset of 1952 was applied.
+```{r}
+gap_qm2<- lm(gdpPercap~I(year-1952)+I(year^2-1952^2),data=gap)
+coef(gap_qm2)
+```
+
+Create the function to do the coefficent automatically
+```{r}
+coef_function <- function(gap, offset=1952){
+  gap_fit <-lm(gdpPercap~I(year-1952)+I(year^2-1952^2),data=gap)
+  setNames(coef(gap_fit),c("intercept","year","year^2"))
+}
+coef_function(gap)
+```
+The values of intercept matches the previous coefficient values, suggesting the function created works.
+
+Let's try with another country's data.
+```{r}
+(gap2 <- gapminder %>% 
+  filter(country == "Australia"))
+coef_function(gap2)
+
+p2 <- ggplot(gap2, aes(x = year, y = gdpPercap))
+p2 + geom_point() + geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE)
+```
+The quadratic model fits the data well as we can see most of the dots fall on the line and the intercept is positive values not.
+
+## Task 06
+### Working with a nested dataframe
+```{r}
+#first, let's make a nested dataframe by grouping continent and country variable.
+(nest_gapminder <- gapminder %>% 
+  group_by(continent, country) %>% 
+  nest())
+```
+```{r}
+# Fit the data with a linear model and a robust model separately
+linear_model <- function(data) {
+  offset = 1952
+  lm(lifeExp~I(year-1952),data)
+}
+#test the function with "afghanistan"
+linear_model(nest_gapminder$data[[1]])
+
+robust_model <-function(data) {
+  offset = 1952
+  MASS::rlm(lifeExp~I(year-1952),data)
+}
+#test the function with "afghanistan"
+robust_model(nest_gapminder$data[[1]])
+```
+
+```{r}
+(nest_gapminder_linear <- nest_gapminder %>% 
+  mutate(fit_lm=map(data,linear_model),
+         coefs_lm=map(fit_lm,tidy)) %>% #add two columns of fit_lm and coefs_lm
+  select(continent, country, coefs_lm) %>% 
+  unnest(coefs_lm))#unnest the coefs_lm column dataframe
+
+(gapminderlm_ests <- nest_gapminder_linear %>% 
+  select(continent:estimate) %>% 
+  mutate(term=recode(term,
+                     `(Intercept)`="Intercept",
+                     `I(year-1952)`="slope")) %>% 
+  spread(key=term,value=estimate))
+
+```
+
+
 
 ```{r}
 
+#Similar wrangling process to robust linear model
+(nest_gapminder_robust <- nest_gapminder %>% 
+  mutate(fit_rlm=map(data,robust_model),
+         coefs_rlm = map(fit_rlm,tidy)) %>% 
+  select(continent, country, coefs_rlm) %>% 
+  unnest(coefs_rlm))
+
+#Make the dataframe looks more handy by spreading the term and estimate
+(gapminder_rlm_ests<-nest_gapminder_robust %>% 
+    select(continent:estimate) %>% 
+    mutate(term=recode(term,
+                     `(Intercept)`="Intercept",
+                     `I(year-1952)`="slope")) %>% 
+  spread(key=term,value=estimate))
 ```
+
+Now we can enjoy the payoff of the organized dataframe
+```{r}
+ggplot(nest_gapminder_linear, aes(estimate))+
+         geom_density()+geom_rug()+facet_wrap(~term,scales = "free")
+         
+ggplot(nest_gapminder_robust, aes(estimate))+
+         geom_density()+geom_rug()+facet_wrap(~term,scales = "free")
+         
+```
+```{r}
+?geom_density
+```
+
+
+
+
