@@ -141,7 +141,7 @@ ggplot(nest_gapminder_robust, aes(estimate))+
          
 ```
 ```{r}
-?geom_density
+
 ```
 
 
