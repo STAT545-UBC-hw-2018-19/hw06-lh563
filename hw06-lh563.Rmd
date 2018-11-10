@@ -139,8 +139,6 @@ ggplot(nest_gapminder_linear, aes(estimate))+
 ggplot(nest_gapminder_robust, aes(estimate))+
          geom_density()+geom_rug()+facet_wrap(~term,scales = "free")
          
-```
-```{r}
 
 ```
 
