@@ -14,5 +14,5 @@ The files include:
 
 ## I found the following materials very useful:
 
--  [splite-apply-combine](http://stat545.com/block024_group-nest-split-map.html)
+-  [split-apply-combine](http://stat545.com/block024_group-nest-split-map.html)
 -  [purrr tutorial](https://jennybc.github.io/purrr-tutorial/index.html) 
