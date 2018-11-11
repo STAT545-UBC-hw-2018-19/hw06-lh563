@@ -7,12 +7,14 @@ output: github_document
 
 # Homework 06
 
+In this homework, we are required to complete two tasks out of six. In this case, task 2: working with functions and task 6: work with nested dataframe were selected in this assignment.
+
 ```{r}
-suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(gapminder))
 suppressPackageStartupMessages(library(broom))
 suppressPackageStartupMessages(library(MASS))
-
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(tidyverse))
 ```
 
 ## Task 02
@@ -96,18 +98,21 @@ robust_model(nest_gapminder$data[[1]])
 ```
 
 ```{r}
-(nest_gapminder_linear <- nest_gapminder %>% 
+
+nest_gapminder_linear <- nest_gapminder %>% 
   mutate(fit_lm=map(data,linear_model),
          coefs_lm=map(fit_lm,tidy)) %>% #add two columns of fit_lm and coefs_lm
-  select(continent, country, coefs_lm) %>% 
-  unnest(coefs_lm))#unnest the coefs_lm column dataframe
+  dplyr::select(continent, country, coefs_lm) %>% 
+  unnest(coefs_lm)#unnest the coefs_lm column dataframe
 
-(gapminderlm_ests <- nest_gapminder_linear %>% 
+summary(nest_gapminder_linear)
+
+gapminderlm_ests <- nest_gapminder_linear %>% 
   select(continent:estimate) %>% 
   mutate(term=recode(term,
                      `(Intercept)`="Intercept",
-                     `I(year-1952)`="slope")) %>% 
-  spread(key=term,value=estimate))
+                     `I(year - 1952)` = 'slope')) %>% 
+  spread(key=term,value=estimate)
 
 ```
 
@@ -127,21 +132,35 @@ robust_model(nest_gapminder$data[[1]])
     select(continent:estimate) %>% 
     mutate(term=recode(term,
                      `(Intercept)`="Intercept",
-                     `I(year-1952)`="slope")) %>% 
+                     `I(year - 1952)`='slope')) %>% 
   spread(key=term,value=estimate))
 ```
 
-Now we can enjoy the payoff of the organized dataframe
 ```{r}
-ggplot(nest_gapminder_linear, aes(estimate))+
-         geom_density()+geom_rug()+facet_wrap(~term,scales = "free")
-         
-ggplot(nest_gapminder_robust, aes(estimate))+
-         geom_density()+geom_rug()+facet_wrap(~term,scales = "free")
-         
+Asia_slope <- gapminderlm_ests %>% 
+  filter(continent=="Asia") 
+knitr::kable(Asia_slope)
+
+Asia_slope %>% 
+  ggplot(aes(slope,country, color=slope))+
+  geom_point()+
+  ggtitle("Change in LifeExp from 1952 to 2007 for countries in Asia")+
+  xlab("change in lifeExp per year")+
+  ylab("country")
 
 ```
 
+Oman has the largest change in lifeExp per year and Iraq has the smallest change. So we can make a graph to see increasing trend of lifeExp in these two countries.
+```{r}
+gapminder %>% 
+  filter(country=="Oman"|country=="Iraq") %>% 
+  ggplot(aes(x=year,y=lifeExp,color=country,group=country)) +
+  theme_bw()+
+  geom_point()+
+  geom_line()+
+  stat_smooth(geom="line",method="lm",se = FALSE, aes(linetype = "LS regression"), alpha = 0.5, size = 0.75) +
+  stat_smooth(geom = "line", method = MASS::rlm, se = FALSE, aes(linetype = "Robust regression"), alpha = 0.5, size = 0.75) +
+  scale_linetype_manual(values = c("dashed", "dotted"))
 
-
+```
 
